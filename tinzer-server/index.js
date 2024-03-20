@@ -35,22 +35,30 @@ async function connectAndStartServer() {
 connectAndStartServer();
 
 // Define routes
-app.post("/users", async (req, res) => {
-  try {
-    const db = client.db("Tinzer");
-    const usersCollection = db.collection("users");
+const usersCollection = client.db("Tinzer").collection("users");
+app.post("/users", (req, res) => {
+  const userDetail = req.body;
 
-    const userDetail = req.body;
-    const result = await usersCollection.insertOne(userDetail);
-
-    console.log("User inserted:", result.insertedId);
-    res.status(201).json({ message: "User created successfully" });
-  } catch (error) {
-    console.error("Error creating user:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-app.get("/", (req, res) => {
-  res.send("Hello World!");
+  usersCollection
+    .findOne({ email: userDetail.email })
+    .then((existingUser) => {
+      if (existingUser) {
+        // Email already exists, send a response indicating duplication
+        res.status(400).json({ error: "Email already exists" });
+      } else {
+        usersCollection
+          .insertOne(userDetail)
+          .then((result) => {
+            res.status(201).json({ message: "User created successfully" });
+          })
+          .catch((error) => {
+            console.error("Error creating user:", error);
+            res.status(500).json({ error: "Internal server error" });
+          });
+      }
+    })
+    .catch((error) => {
+      console.error("Error checking existing user:", error);
+      res.status(500).json({ error: "Internal server error" });
+    });
 });
