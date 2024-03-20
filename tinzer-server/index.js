@@ -1,8 +1,8 @@
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient } = require("mongodb");
 const app = express();
-require('dotenv').config()
+require("dotenv").config();
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -10,37 +10,47 @@ app.use(cors());
 app.use(express.json());
 
 // mongodb
-const uri = `mongodb+srv://${process.env.USER_ID}:${process.env.USER_PASSWORD}@cluster0.pkfik7i.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.USER_ID}:${process.env.USER_PASSWORD}@cluster0.pkfik7i.mongodb.net/?retryWrites=true&w=majority`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-});
+// Create a new MongoClient
+const client = new MongoClient(uri);
 
-async function run() {
+// Connect to MongoDB and start the server
+async function connectAndStartServer() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
+    // Connect the client to the server
     await client.connect();
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
-  } finally {
-    // Ensures that the client will close when you finish/error
-    await client.close();
+    console.log("Connected to MongoDB");
+
+    // Start the server after successfully connecting to MongoDB
+    app.listen(port, () => {
+      console.log(`Tinzer server running on port ${port}`);
+    });
+  } catch (error) {
+    console.error("Error connecting to MongoDB:", error);
+    process.exit(1); // Exit the process if there's an error
   }
 }
-run().catch(console.dir);
+
+connectAndStartServer();
+
+// Define routes
+app.post("/users", async (req, res) => {
+  try {
+    const db = client.db("Tinzer");
+    const usersCollection = db.collection("users");
+
+    const userDetail = req.body;
+    const result = await usersCollection.insertOne(userDetail);
+
+    console.log("User inserted:", result.insertedId);
+    res.status(201).json({ message: "User created successfully" });
+  } catch (error) {
+    console.error("Error creating user:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
-});
-
-app.listen(port, () => {
-  console.log(`Tinzer on port ${port}`);
 });
